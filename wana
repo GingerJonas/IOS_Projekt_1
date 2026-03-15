@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-# set variable
+# set variables
 first_arg=$1
 
 main() {
@@ -13,24 +13,46 @@ main() {
         
         list-ip    
         ;;
-    esac
+        "list-host")
+        shift 1
 
+        log_name=$1
+
+        list-host
+
+        ;;
+    esac
+    
+}
+
+file-checker() {
+
+    if [[ ! -f "$log_name" ]]; then
+        echo "Error, log does not exist" ;
+        return 1 
+    elif [[ ! -s "$log_name" ]]; then
+        echo "Error, $log_name is empty";
+        return 1 
+    fi
+    return 0
 }
 
 list-ip() {
-    # check if the fike exist
-    if [[ -f "$log_name" ]]; then
-        #check if the file have any content 
-        if [[ -s "$log_name" ]]; then 
-            awk -F"- -" '{print $1}' "$log_name";
-        else 
-            echo "Error, $log_name is empty";
-            exit 1
-        fi 
-    else 
-        echo "Error, file does not exist";
-        exit 1
-    fi
+    
+    file-checker || return 1
+    
+    awk -F"- -" '{print $1}' "$log_name"
 }
+
+list-host() {
+
+    file-checker || return 1
+    
+    awk -F"- -" '{print $1}' "$log_name" | while read ip; do
+    host $ip | awk '{print $NF}'
+    done 
+}
+
+
 
 main "$@"
