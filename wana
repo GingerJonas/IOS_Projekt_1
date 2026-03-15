@@ -1,0 +1,36 @@
+#!/bin/bash 
+
+# set variable
+first_arg=$1
+
+main() {
+    # check the first argument and decide what to do
+    case $first_arg in 
+        "list-ip")
+        shift 1
+        
+        log_name=$1 
+        
+        list-ip    
+        ;;
+    esac
+
+}
+
+list-ip() {
+    # check if the fike exist
+    if [[ -f "$log_name" ]]; then
+        #check if the file have any content 
+        if [[ -s "$log_name" ]]; then 
+            awk -F"- -" '{print $1}' "$log_name";
+        else 
+            echo "Error, $log_name is empty";
+            exit 1
+        fi 
+    else 
+        echo "Error, file does not exist";
+        exit 1
+    fi
+}
+
+main "$@"
