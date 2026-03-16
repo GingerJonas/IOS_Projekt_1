@@ -13,7 +13,7 @@ main() {
         
         list-ip    
         ;;
-        "list-host")
+        "list-hosts")
         shift 1
 
         log_name=$1
@@ -21,11 +21,19 @@ main() {
         list-host
 
         ;;
+
+        "list-uri")
+        shift 1 
+
+        log_name=$1
+
+        list-uri
+        ;;
     esac
     
 }
 
-file-checker() {
+log-checker() {
 
     if [[ ! -f "$log_name" ]]; then
         echo "Error, log does not exist" ;
@@ -39,20 +47,28 @@ file-checker() {
 
 list-ip() {
     
-    file-checker || return 1
+    log-checker || return 1
     
     awk -F"- -" '{print $1}' "$log_name"
 }
 
-list-host() {
+list-hosts() {
 
-    file-checker || return 1
+    log-checker || return 1
     
     awk -F"- -" '{print $1}' "$log_name" | while read ip; do
+    # $NF is the same as writing the last column number
     host $ip | awk '{print $NF}'
     done 
+
 }
 
+list-uri() {
+    
+    log-checker || return 1
 
+    grep "HTTP/1.1" "$log_name" | awk '{print $7}' 
+
+}
 
 main "$@"
