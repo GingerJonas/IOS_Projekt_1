@@ -35,9 +35,11 @@ main() {
 
 log-checker() {
 
+    # Checks if the file contains something
     if [[ ! -f "$log_name" ]]; then
         echo "Error, log does not exist" ;
         return 1 
+    # Checks if the file is not empty
     elif [[ ! -s "$log_name" ]]; then
         echo "Error, $log_name is empty";
         return 1 
@@ -48,16 +50,16 @@ log-checker() {
 list-ip() {
     
     log-checker || return 1
-    
+    # Print list of the first column that contains IP addresses
     awk -F"- -" '{print $1}' "$log_name"
 }
 
 list-hosts() {
 
     log-checker || return 1
-    
+    # Make list of IP address that are piped into loop
     awk -F"- -" '{print $1}' "$log_name" | while read ip; do
-    # $NF is the same as writing the last column number
+    # For each IP address is made DNS lookup
     host $ip | awk '{print $NF}'
     done 
 
@@ -66,7 +68,7 @@ list-hosts() {
 list-uri() {
     
     log-checker || return 1
-
+    # Filter out every line without the value and printed list with URI
     grep "HTTP/1.1" "$log_name" | awk '{print $7}' 
 
 }
