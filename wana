@@ -18,7 +18,7 @@ main() {
 
         log_name=$1
 
-        list-host
+        list-hosts
 
         ;;
 
@@ -86,11 +86,7 @@ hist-ip() {
 
     awk '{print $1}' "$log_name" | sort | uniq -c 
 
-    for(i=0; i<$1; i++) {
-
-        printf "#"
-
-    }
+  
 
 }
 
