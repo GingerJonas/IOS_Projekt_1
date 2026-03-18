@@ -75,7 +75,11 @@ list-hosts() {
 list-uri() {
     
     log-checker || return 1
+<<<<<<< HEAD
     # Filter out every line without the value and printed list with URI
+=======
+    # filter all lines without HTTP/1.1 then prints list of uri-
+>>>>>>> 1ff2d2d (Add one comment)
     grep "HTTP/1.1" "$log_name" | awk '{print $7}' 
 
 }
