@@ -37,7 +37,7 @@ main() {
     else 
 
         log_name=$1
-
+        # print the inside of the log 
         cat "$log_name"
 
     fi
@@ -82,7 +82,8 @@ list-uri() {
 }
 
 hist-ip() {
-    
+
+    # sort all IP addresses by the appearence 
     awk '{print $1}' "$log_name" | sort | uniq -c | sort -r -k1,1 |
     awk '{
     
