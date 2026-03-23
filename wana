@@ -4,42 +4,43 @@
 first_arg=$1
 
 main() {
-    
-    log_name=$2 
-    
+
     log-checker
 
     if [ $# -gt 1 ]; then
         # check the first argument and decide what to do
         case $first_arg in 
             "list-ip")
-            
-            list-ip    
+            shift 1
+
+            list-ip "$@"
             
             ;;
-            "list-hosts")
-            
-            list-hosts
+            "list-hosts") 
+            shift 1
+
+            list-hosts "$@"
 
             ;;
 
             "list-uri")
+            shift 1
             
-            list-uri
-            
+            list-uri "$@"
+
             ;;
             "hist-ip")
-        
-            hist-ip
-            
+            shift 1
+
+            hist-ip "$@"
+
+            ;;
+            "hist-load")
+            shift 1 
+
+
             ;;    
         esac
-    else 
-
-        log_name=$1
-        # print the inside of the log 
-        cat "$log_name"
-
     fi
     
 }
@@ -47,12 +48,12 @@ main() {
 log-checker() {
 
     # Checks if the file contains something
-    if [[ ! -f "$log_name" ]]; then
+    if [[ ! -f "$@" ]]; then
         echo "Error, log does not exist" ;
         return 1 
     # Checks if the file is not empty
-    elif [[ ! -s "$log_name" ]]; then
-        echo "Error, $log_name is empty";
+    elif [[ ! -s "$@" ]]; then
+        echo "Error, $@ is empty";
         return 1 
     fi
     return 0
@@ -61,13 +62,13 @@ log-checker() {
 list-ip() {
     
     # Print list of the first column that contains IP addresses
-    awk '{print $1}' "$log_name"
+    awk '{print $1}' "$@"
 }
 
 list-hosts() {
 
     # Make list of IP address that are piped into loop
-    awk '{print $1}' "$log_name" | while read ip; do
+    awk '{print $1}' "$@" | while read ip; do
     # For each IP address is made DNS lookup
     host $ip | awk '{print $NF}'
     done 
@@ -77,14 +78,14 @@ list-hosts() {
 list-uri() {
     
     # filter all lines without HTTP/1.1 then prints list of uri-
-    grep "HTTP/1.1" "$log_name" | awk '{print $7}' 
+    grep "HTTP/1.1" "$@" | awk '{print $7}' 
 
 }
 
 hist-ip() {
 
     # sort all IP addresses by the appearence 
-    awk '{print $1}' "$log_name" | sort | uniq -c | sort -r -k1,1 |
+    awk '{print $1}' "$@" | sort | uniq -c | sort -r -k1,1 |
     awk '{
     
         printf "%s (%d): ", $2, $1
@@ -96,6 +97,12 @@ hist-ip() {
 
         printf "\n"
     }'
+
+}
+
+hist-load() {
+
+    # first need to do time filter
 
 }
 
