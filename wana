@@ -2,8 +2,10 @@
 
 main() {
 
+    #set variables
     command_name=""
-    filtr_name=""
+    time_after=""
+    time_before=""
     file_name="${@: -1}"
 
     log-checker "$@" || return 1
@@ -12,10 +14,24 @@ main() {
     while [ $# -gt 0 ]; do
         # check the first argument and decide what to do
         case $1 in 
+            "-a")
+
+            time_after="$2"
+            shift 2
+            
+            ;;
+            "-b")
+            
+            time_before=$2
+            shift 2
+            
+            ;;
             "list-ip"|"list-hosts"|"list-uri"|"hist-ip"|"hist-load")
+            
             # if find one of the command save it and break loop
             command_name="$1"
             shift
+            
             break
             ;;
             *)
@@ -25,21 +41,25 @@ main() {
         esac
     done
 
-    # condition if no commands or filter are written
-   if [[ $# -eq 0 ]]; then 
+    if [[ -n "$command_name" ]]; then 
 
-        find . -name "*log*" -print | xargs -0 cat
-    
-    else
-    
-        if [[ "$file_name" == *.gz ]]; then
-            zcat "$@" | sort -u
-        else 
-            cat "$@" | sort -u
-    
-        fi
+        command-apply "$@"
+    else 
+        # condition if no commands or filter are written
+        if [[ $# -eq 0 ]]; then 
+
+                find . -name "*log*" -print0 | xargs -0 cat
+            
+            else
+            
+                if [[ "$file_name" == *.gz ]]; then
+                    zcat "$@" | sort -u
+                else 
+                    cat "$@" | sort -u
+            
+                fi
+            fi
     fi
-
  
 
 }
@@ -56,6 +76,35 @@ log-checker() {
         return 1 
     fi
     return 0
+}
+
+date-filter() { 
+
+    # delete all dashes and colon from the date after and before
+    if [[ -n "$time_after" ]]; then
+        formatted_after=${echo "$time_after", tr -d " - : "}
+    fi
+    
+    if [[ -n "$time_before" ]]; then
+        formatted_before=${echo "$time_before", tr -d " - : "}
+    fi
+
+    # BEGIN is making dictionary of numbers for each month
+    # define varibles for time after and before  
+    awk -v alimit="$formated_after" -v blimit="$formated_before" '
+    BEGIN {
+       
+        m["Jan"]="01"; m["Feb"]="02"; m["Mar"]="03"; m["Apr"]="04"; m["May"]="05"; m["Jun"]="06";
+        m["Jul"]="07"; m["Aug"]="08"; m["Sep"]="09"; m["Oct"]="10"; m["Nov"]="11"; m["Dec"]="12"
+   
+    }
+    
+
+    
+    '
+
+
+
 }
 
 # apply command using saved command name
