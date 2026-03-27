@@ -7,8 +7,6 @@ main() {
     time_after=""
     time_before=""
     file_name="${@: -1}"
-
-    log-checker "$@" || return 1
     
     # loop all arguments
     while [ $# -gt 0 ]; do
@@ -41,92 +39,95 @@ main() {
         esac
     done
 
-    if [[ -n "$command_name" ]]; then 
+    log-checker "$@" || return 1
 
-        command-apply "$@"
+
+    if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" ]]; then 
+
+        gzip -dc "$@" 2>/dev/null | date-filter "$time_after" "$time_before" | 
+        if [[ -n "$command_name" ]]; then 
+            command-apply "$@"
+        else 
+            cat "$@"
+        fi  
     else 
-        # condition if no commands or filter are written
-        if [[ $# -eq 0 ]]; then 
 
-                find . -name "*log*" -print0 | xargs -0 cat
-            
-            else
-            
-                if [[ "$file_name" == *.gz ]]; then
-                    zcat "$@" | sort -u
-                else 
-                    cat "$@" | sort -u
-            
-                fi
-            fi
+        gzip -dc "$@" 2>/dev/null
+
     fi
- 
-
 }
 
 log-checker() {
     
-    # Checks if the file exist
-    if [[ ! -f "$file_name" ]]; then
-        echo "Error, $file_name does not exist" ;
-        return 1 
-    # Checks if the file is not empty
-    elif [[ ! -s "$file_name" ]]; then
-        echo "Error, $file_name is empty";
-        return 1 
-    fi
+    for file_name in "$@"; do
+        # Checks if the file exist
+        if [[ ! -f "$file_name" ]]; then
+            echo "Error, $file_name does not exist" >&2
+            return 1 
+        # Checks if the file is not empty
+        elif [[ ! -s "$file_name" ]]; then
+            echo "Error, $file_name is empty" >&2
+            return 1 
+        fi
+    done
     return 0
 }
 
 date-filter() { 
 
-    # delete all dashes and colon from the date after and before
+    # delete all dashes and colon from the users dates after and before
     if [[ -n "$time_after" ]]; then
-        formatted_after=${echo "$time_after", tr -d " - : "}
+        local formatted_after=${echo "$time_after", tr -d " - : "}
     fi
     
     if [[ -n "$time_before" ]]; then
-        formatted_before=${echo "$time_before", tr -d " - : "}
+        local formatted_before=${echo "$time_before", tr -d " - : "}
     fi
 
     # BEGIN is making dictionary of numbers for each month
     # define varibles for time after and before  
-    awk -v alimit="$formated_after" -v blimit="$formated_before" '
+    awk -v alimit="$formatted_after" -v blimit="$formatted_before" '
     BEGIN {
        
         m["Jan"]="01"; m["Feb"]="02"; m["Mar"]="03"; m["Apr"]="04"; m["May"]="05"; m["Jun"]="06";
         m["Jul"]="07"; m["Aug"]="08"; m["Sep"]="09"; m["Oct"]="10"; m["Nov"]="11"; m["Dec"]="12"
-   
+    
     }
+    {
+        cleared_date = substr($4, 2)
     
+        split($4, d, /[\/:v]/)
 
-    
-    '
+        log_date = d[3] m[d[2]] d[1] d[4] d[5] d[6]
 
+        valid_time = 1 
 
+        if(alimit != "" && log_date <= alimit) {
+        
+            valid_time = 0
 
+        }
+        if (blimit != "" && log_dat >= blimit) {
+        
+            valid_time = 0
+        
+        }
+        if (valid_time != 0) {
+        
+            print $0
+        
+        }
+    }'
 }
 
 # apply command using saved command name
 command-apply() {
 
     case "$command_name" in 
-        "list-ip")
-        
-        list-ip "$@"
-        ;;
-        "list-hosts")
-
-        list-hosts "$@"
-        ;;
-        "list-uri")
-
-        list-uri "$@"
-        ;;
-        "hist-ip")
-
-        hist-ip "$@"
-        ;;
+        "list-ip")      list-ip  ;;
+        "list-hosts")   list-hosts ;;
+        "list-uri")     list-uri ;;
+        "hist-ip")      hist-ip ;;
     esac
 }
 
@@ -141,7 +142,16 @@ list-hosts() {
     # Make list of IP address that are piped into loop
     awk '{print $1}' "$@" | while read ip; do
     # For each IP address is made DNS lookup
-    host $ip | awk '{print $NF}' | sort -u
+    # If it cant find the domain name it will print IP address
+    host "$ip"| awk -v ip="$ip" '
+        /NXDOMAIN/ {
+            print ip; exit
+        }
+        /domain name/ {
+            print $NF; exit
+        }
+    ' 
+    
     done 
 
 }
