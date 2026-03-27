@@ -39,19 +39,21 @@ main() {
         esac
     done
 
+    # Checks if the file exist 
     log-checker "$@" || return 1
 
-
+    #  Go on if one of the filters or command is not empty
     if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" ]]; then 
-
+        # read the file, launch filter function and then launch command function
         gzip -dcf "$@" 2>/dev/null | date-filter "$time_after" "$time_before"| 
         if [[ -n "$command_name" ]]; then 
             command-apply 
         else 
+        # if no command is read print the content of the file
             cat 
         fi  
     else 
-
+        # read file name from stdin 
         gzip -dc "$@" 2>/dev/null
 
     fi
@@ -88,7 +90,10 @@ date-filter() {
     fi
 
     # BEGIN is making dictionary of numbers for each month
-    # define varibles for time after and before  
+    # define varibles for time after and before
+    # Clear the [ before the date
+    # split the log date to array d 
+    # compare date from log with the time from argument   
     awk -v alimit="$formatted_after" -v blimit="$formatted_before" '
     BEGIN {
        
@@ -103,23 +108,20 @@ date-filter() {
 
         log_date = d[3] m[d[2]] d[1] d[4] d[5] d[6]
 
-        valid_time = 1 
+        
 
         if(alimit != "" && log_date <= alimit) {
         
-            valid_time = 0
+            next 
 
         }
         if (blimit != "" && log_date >= blimit) {
         
-            valid_time = 0
+            exit 
         
         }
-        if (valid_time != 0) {
         
-            print $0
-        
-        }
+        print $0        
     }'
 }
 
