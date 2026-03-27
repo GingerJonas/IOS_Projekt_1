@@ -44,11 +44,11 @@ main() {
 
     if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" ]]; then 
 
-        gzip -dc "$@" 2>/dev/null | date-filter "$time_after" "$time_before" | 
+        gzip -dcf "$@" 2>/dev/null | date-filter "$time_after" "$time_before"| 
         if [[ -n "$command_name" ]]; then 
-            command-apply "$@"
+            command-apply 
         else 
-            cat "$@"
+            cat 
         fi  
     else 
 
@@ -75,13 +75,16 @@ log-checker() {
 
 date-filter() { 
 
+    local formatted_after=""
+    local formatted_before=""
+
     # delete all dashes and colon from the users dates after and before
     if [[ -n "$time_after" ]]; then
-        local formatted_after=${echo "$time_after", tr -d " - : "}
+        local formatted_after=$(echo "$time_after" | tr -d " :- ")
     fi
     
     if [[ -n "$time_before" ]]; then
-        local formatted_before=${echo "$time_before", tr -d " - : "}
+        local formatted_before=$(echo "$time_before" | tr -d " :- ")
     fi
 
     # BEGIN is making dictionary of numbers for each month
@@ -96,7 +99,7 @@ date-filter() {
     {
         cleared_date = substr($4, 2)
     
-        split($4, d, /[\/:v]/)
+        split(cleared_date, d, /[\/:]/)
 
         log_date = d[3] m[d[2]] d[1] d[4] d[5] d[6]
 
@@ -107,7 +110,7 @@ date-filter() {
             valid_time = 0
 
         }
-        if (blimit != "" && log_dat >= blimit) {
+        if (blimit != "" && log_date >= blimit) {
         
             valid_time = 0
         
