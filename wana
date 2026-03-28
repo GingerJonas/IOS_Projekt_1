@@ -6,6 +6,8 @@ main() {
     command_name=""
     time_after=""
     time_before=""
+    main_ip=""
+    main_uri=""
     file_name="${@: -1}"
     
     # loop all arguments
@@ -14,7 +16,7 @@ main() {
         case $1 in 
             "-a")
 
-            time_after="$2"
+            time_after=$2
             shift 2
             
             ;;
@@ -23,6 +25,18 @@ main() {
             time_before=$2
             shift 2
             
+            ;;
+            "-ip")
+            
+            main_ip=$2
+            shift 2
+            
+            ;;
+            "-uri")
+            
+            main_uri=$2
+            shift 2 
+
             ;;
             "list-ip"|"list-hosts"|"list-uri"|"hist-ip"|"hist-load")
             
@@ -43,9 +57,10 @@ main() {
     log-checker "$@" || return 1
 
     #  Go on if one of the filters or command is not empty
-    if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" ]]; then 
+    if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" || -n "$main_ip" || -n "$main_uri" ]]; then 
         # read the file, launch filter function and then launch command function
-        gzip -dcf "$@" 2>/dev/null | date-filter "$time_after" "$time_before"| 
+        gzip -dcf "$@" 2>/dev/null | 
+        date-filter "$time_after" "$time_before"| ip-filter "$main_ip" | uri-filter "$main_uri" | 
         if [[ -n "$command_name" ]]; then 
             command-apply 
         else 
@@ -94,7 +109,7 @@ date-filter() {
     # Clear the [ before the date
     # split the log date to array d 
     # compare date from log with the time from argument   
-    awk -v alimit="$formatted_after" -v blimit="$formatted_before" '
+    awk -v after="$formatted_after" -v before="$formatted_before" '
     BEGIN {
        
         m["Jan"]="01"; m["Feb"]="02"; m["Mar"]="03"; m["Apr"]="04"; m["May"]="05"; m["Jun"]="06";
@@ -110,12 +125,12 @@ date-filter() {
 
         
 
-        if(alimit != "" && log_date <= alimit) {
+        if (after != "" && log_date <= after) {
         
             next 
 
         }
-        if (blimit != "" && log_date >= blimit) {
+        if (before != "" && log_date >= before) {
         
             exit 
         
@@ -123,6 +138,34 @@ date-filter() {
         
         print $0        
     }'
+}
+
+# print only ip address added for the filter
+ip-filter() {
+    
+    local main_ip=$1
+    
+    if [[ -n "$main_ip" ]]; then 
+        # comparing each ip address with needed ip address
+        awk -v ip="$main_ip" '$1 == ip { print $0 }'
+    
+    else 
+        cat
+    fi
+}
+
+
+uri-filter() {
+
+    local main_uri=$1
+
+    if [[ -n "$main_uri" ]]; then
+
+        awk -v uri="$main_uri" '$7 ~ uri { print $0 }'
+    
+    else 
+        cat    
+    fi
 }
 
 # apply command using saved command name
@@ -133,6 +176,7 @@ command-apply() {
         "list-hosts")   list-hosts ;;
         "list-uri")     list-uri ;;
         "hist-ip")      hist-ip ;;
+        "hist-load")    hist-load;;
     esac
 }
 
@@ -186,10 +230,39 @@ hist-ip() {
 
 }
 
-# hist-load() {
+hist-load() {
 
-    # first need to do time filter
+    # take time from the log
+    awk '
+    BEGIN {
+       
+        m["Jan"]="01"; m["Feb"]="02"; m["Mar"]="03"; m["Apr"]="04"; m["May"]="05"; m["Jun"]="06";
+        m["Jul"]="07"; m["Aug"]="08"; m["Sep"]="09"; m["Oct"]="10"; m["Nov"]="11"; m["Dec"]="12"
+    
+    }
+    {
 
-# }
+    cleared_date = substr($4, 2)
+    
+    split(cleared_date, d, /[\/:]/)
+
+    printf "%s-%s-%s %s:00\n", d[3], m[d[2]], d[1], d[4]
+
+    }
+    ' | sort | uniq -c | 
+    # do the same thing like in hist ip 
+    awk '{
+    
+        printf "%s %s (%d): ", $2, $3, $1
+
+        for(i = 0; i < $1; i++){
+        
+            printf "#"
+        
+        }
+    
+        printf "\n"
+    }'
+}
 
 main "$@"
