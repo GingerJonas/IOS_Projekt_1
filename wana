@@ -60,7 +60,7 @@ main() {
     if [[ -n "$command_name" || -n "$time_after" || -n "$time_before" || -n "$main_ip" || -n "$main_uri" ]]; then 
         # read the file, launch filter function and then launch command function
         gzip -dcf "$@" 2>/dev/null | 
-        date-filter "$time_after" "$time_before"| ip-filter "$main_ip" | uri-filter "$main_uri" | 
+        date-filter | ip-filter "$main_ip" | uri-filter "$main_uri" | 
         if [[ -n "$command_name" ]]; then 
             command-apply 
         else 
@@ -69,7 +69,7 @@ main() {
         fi  
     else 
         # read file name from stdin 
-        gzip -dc "$@" 2>/dev/null
+        gzip -dcf "$@" 2>/dev/null
 
     fi
 }
@@ -92,8 +92,8 @@ log-checker() {
 
 date-filter() { 
 
-    local formatted_after=""
-    local formatted_before=""
+    formatted_after=""
+    formatted_before=""
 
     # delete all dashes and colon from the users dates after and before
     if [[ -n "$time_after" ]]; then
@@ -124,7 +124,6 @@ date-filter() {
         log_date = d[3] m[d[2]] d[1] d[4] d[5] d[6]
 
         
-
         if (after != "" && log_date <= after) {
         
             next 
@@ -132,7 +131,7 @@ date-filter() {
         }
         if (before != "" && log_date >= before) {
         
-            exit 
+            next 
         
         }
         
@@ -189,17 +188,19 @@ list-ip() {
 list-hosts() {
 
     # Make list of IP address that are piped into loop
-    awk '{print $1}' "$@" | while read ip; do
+    awk '{print $1}' | sort -u | while read ip; do
     # For each IP address is made DNS lookup
     # If it cant find the domain name it will print IP address
     host "$ip"| awk -v ip="$ip" '
         /NXDOMAIN/ {
-            print ip; exit
+            print ip; found=1; exit
         }
         /domain name/ {
-            print $NF; exit
+            print $NF; found=1; exit
         }
-    ' 
+        END { 
+        if(!found) print ip 
+        }' 
     
     done 
 
@@ -215,7 +216,7 @@ list-uri() {
 hist-ip() {
 
     # sort all IP addresses by the appearence 
-    awk '{print $1}' "$@" | sort | uniq -c | sort -r -k1,1 |
+    awk '{print $1}' "$@" | sort | uniq -c | sort -k1,1nr |
     awk '{
     
         printf "%s (%d): ", $2, $1
